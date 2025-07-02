@@ -54,6 +54,7 @@ const ThemeMode: React.FC<ThemeModeProps> = ({ modes }) => {
 
   return (
     <div className="flex flex-col">
+      <b> 主题切换</b>
       <div className="flex justify-around">{renderModeList()}</div>
     </div>
   );

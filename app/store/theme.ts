@@ -11,19 +11,17 @@ export function themeIsDark() {
 
 export const DEFAULT_THEME = "light";
 
-export const themeStore = atom<Theme>(initStore());
+export const themeStore = atom<Theme>(DEFAULT_THEME);
 
-function initStore() {
-  if (isClient()) {
-    const persistedTheme = localStorage.getItem(kTheme) as Theme | undefined;
-    const themeAttribute = document
-      .querySelector("html")
-      ?.getAttribute("data-theme");
+function setThemeToDOM(theme: Theme) {
+  if (!isClient()) return;
 
-    return persistedTheme ?? (themeAttribute as Theme) ?? DEFAULT_THEME;
+  document.querySelector("html")?.setAttribute("data-theme", theme);
+  if (theme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
   }
-
-  return DEFAULT_THEME;
 }
 
 export function toggleTheme() {
@@ -37,12 +35,6 @@ export function setTheme(theme: Theme) {
 
   if (isClient()) {
     localStorage.setItem(kTheme, theme);
-    document.querySelector("html")?.setAttribute("data-theme", theme);
-    // 同时设置 CSS 类名，方便 Tailwind 的 dark: 类使用
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    setThemeToDOM(theme);
   }
 }

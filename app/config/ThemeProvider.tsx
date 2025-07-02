@@ -1,16 +1,15 @@
 "use client";
-import { useStore } from "@nanostores/react";
 import { ConfigProvider } from "antd";
 import { ReactNode } from "react";
-import { darkTheme, lightTheme } from "../config/antd-theme";
-import { themeStore } from "../store/theme";
+import { useThemeInitializer } from "../hooks/useThemeInitializer";
+import { darkTheme, lightTheme } from "./antd-theme";
 
 interface ThemeProviderProps {
   children: ReactNode;
 }
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
-  const theme = useStore(themeStore);
+  const theme = useThemeInitializer();
 
   const currentTheme = theme === "dark" ? darkTheme : lightTheme;
 
