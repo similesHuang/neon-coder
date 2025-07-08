@@ -7,20 +7,23 @@ interface StreamRequestOptions {
   onChunk?: (chunk: string, fullContent: string) => void;
   onComplete?: (fullContent: string) => void;
   onError?: (error: Error) => void;
+  signal?: AbortSignal;
 }
 
-export const streamRequest = async (
-   {
-    url,
-    body,
-    headers = {},
-    onChunk,
-    onComplete,
-    onError
-   }:StreamRequestOptions
-) => {
+export const streamRequest = async ({
+  url,
+  body,
+  headers = {},
+  onChunk,
+  onComplete,
+  onError,
+  signal,
+}: StreamRequestOptions) => {
   try {
-    const response = await httpRequest.post(url, body, { headers: headers });
+    const response = await httpRequest.post(url, body, {
+      headers: headers,
+      signal,
+    });
     const reader = response.body?.getReader();
     if (!reader) {
       throw new Error("Response body is not readable");

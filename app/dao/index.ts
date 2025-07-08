@@ -1,6 +1,5 @@
 import { ChatHistoryItem, Message } from "@/types/common";
-
-export const openDB = async () => {
+export const openDB: () => Promise<IDBDatabase | undefined> = async () => {
   return new Promise((resolve) => {
     const request = indexedDB.open("neonHistory", 1);
 

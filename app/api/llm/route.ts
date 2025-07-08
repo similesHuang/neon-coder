@@ -4,8 +4,8 @@ import OpenAI from "openai";
 
 export async function POST(request: NextRequest) {
   const openai = new OpenAI({
-    apiKey: process.env.DEEP_SEEK_API_KEY,
-    baseURL: process.env.DEEP_SEEK_BASE_URL,
+    apiKey: process.env.DASHSCOPE_API_KEY,
+    baseURL: process.env.BASE_URL,
   });
 
   const { messages }: { messages: Message[] } = await request.json();
@@ -15,8 +15,13 @@ export async function POST(request: NextRequest) {
       const encoder = new TextEncoder();
       try {
         const completion = await openai.chat.completions.create({
-          model: "deepseek-v3",
-          messages,
+          model: "deepseek-r1",
+          messages: messages?.map((msg) => {
+            return {
+              role: msg.role || "user",
+              content: msg.content || "",
+            };
+          }),
           stream: true,
         });
 
