@@ -1,30 +1,26 @@
 import { Message } from "@/types/common";
 import { NextRequest } from "next/server";
 import OpenAI from "openai";
-
+export const openai = new OpenAI({
+  apiKey: process.env.DASHSCOPE_API_KEY,
+  baseURL: process.env.BASE_URL,
+});
 export async function POST(request: NextRequest) {
-  const openai = new OpenAI({
-    apiKey: process.env.DASHSCOPE_API_KEY,
-    baseURL: process.env.BASE_URL,
-  });
-
   const { messages }: { messages: Message[] } = await request.json();
-
+  const completion = await openai.chat.completions.create({
+    model: "qwen-max",
+    messages: messages?.map((msg) => {
+      return {
+        role: msg.role || "user",
+        content: msg.content || "",
+      };
+    }),
+    stream: true,
+  });
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
       try {
-        const completion = await openai.chat.completions.create({
-          model: "deepseek-r1",
-          messages: messages?.map((msg) => {
-            return {
-              role: msg.role || "user",
-              content: msg.content || "",
-            };
-          }),
-          stream: true,
-        });
-
         for await (const chunk of completion) {
           const content = chunk.choices?.[0]?.delta?.content || "";
           if (content) {

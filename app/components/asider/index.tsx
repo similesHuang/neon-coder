@@ -54,8 +54,8 @@ export const Asider: React.FC<{
           backgroundColor: themeColors.footerBg,
         },
       }}
-      mask={false}
       closeIcon={null}
+      onClose={onClose}
       footer={
         <ThemeMode
           modes={[

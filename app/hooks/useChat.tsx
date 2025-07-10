@@ -14,6 +14,7 @@ interface UseChatReturn {
   messages: Message[];
   input: string;
   isLoading: boolean;
+  isStreaming: boolean; // 新增：标记是否正在流式传输
   error: Error | null;
   handleInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -31,15 +32,15 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
     initialMessages = [],
     onError,
     onFinish,
-    onResponse,
     headers = {},
   } = options;
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // 中断网络请求
+  // 用于取消请求的 AbortController
   const abortControllerRef = useRef<AbortController | null>(null);
   const generateId = () =>
     Date.now().toString() + Math.random().toString(36).slice(2, 9);
@@ -50,10 +51,11 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
     },
     []
   );
-  // 发送消息
+
   const sendMessage = useCallback(
     async (messagesToSend: Message[]) => {
       setIsLoading(true);
+      setIsStreaming(false);
       setError(null);
       abortControllerRef.current = new AbortController();
       const { signal } = abortControllerRef.current;
@@ -77,8 +79,17 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
           },
           signal,
           onChunk: (chunk: string, fullcontent: string) => {
-            if (signal.aborted) return;
-            console.log("Received chunk:", chunk);
+            if (signal.aborted) {
+              // 不改变状态，由 stop() 函数负责
+              return;
+            }
+
+            // 收到第一个 chunk 时，修改状态
+            if (!isStreaming) {
+              setIsStreaming(true); // 开始流式传输
+              setIsLoading(false); // 结束初始加载
+            }
+
             // 更新助手消息内容
             setMessages((prev) =>
               prev.map((msg) =>
@@ -89,8 +100,13 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
             );
           },
           onComplete: (fullContent: string) => {
-            if (signal.aborted) return;
-            // 获取最终的助手消息
+            if (signal.aborted) {
+              return;
+            }
+
+            setIsStreaming(false);
+            setIsLoading(false);
+
             setMessages((prev) => {
               const updatedMessages = prev.map((msg) =>
                 msg.id === assistantMessage.id
@@ -98,7 +114,6 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
                   : msg
               );
 
-              // 获取最终消息用于 onFinish 回调
               const finalMessage = updatedMessages.find(
                 (msg) => msg.id === assistantMessage.id
               );
@@ -110,15 +125,15 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
             });
           },
           onError: (error: Error) => {
-            // 如果是用户主动取消，不显示错误
             if (error.name === "AbortError" || signal.aborted) {
               return;
             }
 
+            setIsStreaming(false);
+            setIsLoading(false);
             setError(error);
             onError?.(error);
 
-            // 移除未完成的助手消息
             setMessages((prev) =>
               prev.filter((msg) => msg.id !== assistantMessage.id)
             );
@@ -127,28 +142,29 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
       } catch (err) {
         const error = err as Error;
 
-        // 如果是用户主动取消，不显示错误
         if (error.name === "AbortError" || signal.aborted) {
           return;
         }
 
+        setIsStreaming(false);
+        setIsLoading(false);
         setError(error);
         onError?.(error);
 
-        // 移除未完成的助手消息
         setMessages((prev) =>
           prev.filter((msg) => msg.id !== assistantMessage.id)
         );
       } finally {
         if (!signal.aborted) {
           setIsLoading(false);
+          setIsStreaming(false);
         }
         abortControllerRef.current = null;
       }
     },
-    [api, headers, onError, onFinish]
+    [api, headers, onError, onFinish, isStreaming]
   );
-  // 提交表单
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -172,7 +188,7 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
     },
     [input, isLoading, messages, sendMessage]
   );
-  // 追加消息
+
   const append = useCallback(
     async (message: Omit<Message, "id" | "timestamp">) => {
       const newMessage: Message = {
@@ -190,30 +206,28 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
     },
     [messages, sendMessage]
   );
-  // 重新加载最后一条消息
+
   const reload = useCallback(async () => {
     if (messages.length === 0 || isLoading) return;
 
-    // 找到最后一条用户消息
     const lastUserMessageIndex = messages.findLastIndex(
       (msg) => msg.role === "user"
     );
 
     if (lastUserMessageIndex === -1) return;
 
-    // 移除最后一条助手消息（如果存在）
     const messagesToReload = messages.slice(0, lastUserMessageIndex + 1);
     setMessages(messagesToReload);
 
     await sendMessage(messagesToReload);
-  }, [messages, sendMessage, isLoading]);
+  }, [messages, sendMessage, isLoading, isStreaming]);
 
-  // 停止当前请求 - 真正中断网络请求
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
     setIsLoading(false);
+    setIsStreaming(false);
     setError(null);
   }, []);
 
@@ -221,6 +235,7 @@ const useChat: (options: ChatProps) => UseChatReturn = (options) => {
     messages,
     input,
     isLoading,
+    isStreaming,
     error,
     handleInputChange,
     handleSubmit,
