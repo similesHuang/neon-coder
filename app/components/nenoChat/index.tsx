@@ -1,6 +1,8 @@
 "use client";
 import useChat from "@/hooks/useChat";
+import { chatStore } from "@/store/chat";
 import { Message } from "@/types/common";
+import { Affix } from "antd";
 import React, { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
@@ -44,9 +46,18 @@ const NenoChat: React.FC = () => {
     }, 0);
   };
 
+  const abort = () => {
+    stop();
+    chatStore.setKey("aborted", true);
+    // workbenchStore.abortAllActions();
+  };
+
   return (
     <>
-      <div className="flex flex-col h-[calc(100%-100px)]">
+      <div
+        className="flex flex-col"
+        style={{ overflowY: "scroll", height: "calc(100vh - 200px)" }}
+      >
         <div className="flex-1 overflow-y-auto" ref={scrollRef}>
           {!chatStarted && (
             <div className="mt-24 text-center">
@@ -109,60 +120,62 @@ const NenoChat: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative flex items-end h-[100px]">
-        <textarea
-          className="w-full resize-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-3 pr-16 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="发送消息..."
-          value={input}
-          onChange={handleInputChange}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit(e);
-            }
-          }}
-          rows={2}
-          disabled={isLoading}
-        />
-        <div className="absolute bottom-3 right-3 flex gap-2">
-          {isStreaming ? (
-            <button
-              onClick={stop}
-              className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition"
-              title="停止生成"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+      <Affix offsetBottom={0}>
+        <div className="relative flex items-end">
+          <textarea
+            className="w-full resize-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 p-3 pr-16 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="发送消息..."
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            rows={2}
+            disabled={isLoading}
+          />
+          <div className="absolute bottom-3 right-3 flex gap-2">
+            {isStreaming ? (
+              <button
+                onClick={abort}
+                className="p-2 rounded-full bg-red-500 text-white hover:bg-red-600 transition"
+                title="停止生成"
               >
-                <rect x="6" y="6" width="8" height="8" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={!input.trim() || isLoading}
-              className={`p-2 rounded-full transition ${
-                input.trim() && !isLoading
-                  ? "bg-blue-500 text-white hover:bg-blue-600"
-                  : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-              }`}
-              title="发送消息"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <rect x="6" y="6" width="8" height="8" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={!input.trim() || isLoading}
+                className={`p-2 rounded-full transition ${
+                  input.trim() && !isLoading
+                    ? "bg-blue-500 text-white hover:bg-blue-600"
+                    : "bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                }`}
+                title="发送消息"
               >
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-              </svg>
-            </button>
-          )}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </Affix>
     </>
   );
 };
